@@ -73,3 +73,76 @@ housing |> group_by(type) |>
                    list(mean = ~mean(.x, na.rm = TRUE),
                         median = ~median(.x, na.rm = TRUE))))
 ```
+
+## Contingency Tables
+
+### One-way tables
+```{r one-way-tidy}
+# tidyverse: counts of each property type
+housing |>
+  drop_na(type) |>
+  group_by(type) |>
+  summarize(count = n())
+
+# counts of each sale method
+housing |>
+  drop_na(method) |>
+  group_by(method) |>
+  summarize(count = n())
+```
+
+
+```{r one-way-tabyl}
+# tabyl: same counts, with proportions included automatically
+housing |> tabyl(type)
+housing |> tabyl(method) |> adorn_pct_formatting()
+```
+
+Houses make up about two-thirds of the sales (18,470 of 27,244), and most
+properties sold outright ("Sold", 64%).
+
+## Two-way tables
+
+```{r two-way-tidy}
+# tidyverse: region group by property type, pivoted to wide format
+housing |>
+  drop_na(region_group, type) |>
+  group_by(region_group, type) |>
+  summarize(count = n(), .groups = "drop") |>
+  pivot_wider(names_from = type, values_from = count)
+```
+
+
+```{r two-way-tabyl}
+# tabyl: same table, plus row/column totals
+housing |>
+  tabyl(region_group, type) |>
+  adorn_totals(c("row", "col"))
+
+# Row percentages: the mix of property types within each region
+housing |>
+  tabyl(region_group, type) |>
+  adorn_percentages("row") |>
+  adorn_pct_formatting()
+```
+
+Southern Metropolitan has the highest share of units (33%), while Regional
+Victoria is almost entirely houses (97%).
+
+### Three-way table
+
+```{r three-way-tidy}
+# tidyverse: region group by type by sale year (year across the columns)
+housing |>
+  drop_na(region_group, type, sale_year) |>
+  group_by(region_group, type, sale_year) |>
+  summarize(count = n(), .groups = "drop") |>
+  pivot_wider(names_from = sale_year, values_from = count)
+```
+
+
+```{r three-way-tabyl}
+# tabyl: returns a list with one two-way table for each sale year
+housing |> 
+  tabyl(region_group, type, sale_year)
+```

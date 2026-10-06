@@ -304,3 +304,8 @@ housing |>
 ```
 
 In the metropolitan regions, median price rises steadily with the number of rooms, most steeply in Southern Metropolitan ($405K for 1 room to $2.4M for 5+). The high Regional Victoria value for 1 room is based on only 2 sales.
+
+ ```{r save-cleaned-data-rds}
+ # save the clean data for the Shiny app
+ write_rds(housing, "data/melbourne_housing_cleaned.rds")
+ ```

@@ -1,0 +1,75 @@
+```{r libraries}
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(janitor)
+```
+
+```{r loading-data}
+housing_raw <- read_csv("data/Melbourne_housing_FULL.csv")
+problems(read_csv("data/Melbourne_housing_FULL.csv"))
+```
+
+```{r cleaning-data}
+housing<- read_csv("data/Melbourne_housing_FULL.csv",
+                        na = c("", "NA", "#N/A")) |>
+  clean_names() |>
+  distinct() |>
+  # response variable must be present so we can drop 3 rows with no region
+  # without about 22% are dropped.
+  # rows with missing region/council info were removed
+  filter(!is.na(price), !is.na(regionname)) |>
+  # fix misspelled source column names and use clearer names
+  rename(latitude = lattitude, longitude = longtitude,
+         region = regionname, bedrooms = bedroom2) |>
+  mutate(
+     # dates are stored as day/month/year 
+    date = dmy(date),
+    sale_year = factor(year(date)),
+    # replace single-letter codes with readable labels
+    type = factor(type, levels = c("h", "u", "t"),
+                  labels = c("House", "Unit", "Townhouse")),
+    method = factor(method,
+                    levels = c("S", "SP", "PI", "VB", "SA"),
+                    labels = c("Sold", "Sold prior", "Passed in",
+                               "Vendor bid", "Sold after auction")),
+    # the three "Victoria" regions together have only ~430 sales, so they
+    # are combined into one "Regional Victoria" level for filtering reasons
+    region_group = if_else(str_detect(region, "Victoria"),
+                           "Regional Victoria", region) |> factor(),
+    region = factor(region),
+    # placeholder values -> NA
+    # land size of 0 is a placeholder, not a real value
+    landsize      = na_if(landsize, 0),
+    # for some units, landsize is the land under the whole building/complex
+    # (some 2-room units show 15,000+ m^2),so not meaningful
+    landsize = if_else(type == "Unit", NA_real_, landsize),
+    # building areas of 0 or > 5,000 m^2 are data-entry errors
+    building_area = if_else(building_area == 0 | building_area > 5000,
+                            NA_real_, building_area),
+    # year built must fall between 1800 and the end of the data (2018)
+    # values like 1196 and 2106 are typos
+    year_built    = if_else(year_built < 1800 | year_built > 2018,
+                            NA_real_, year_built),
+    # postcode is an identifier
+    postcode = as.character(postcode)
+  ) |>
+
+# Keep derived columns next to the variables they come from
+relocate(sale_year, .after  = date) |>
+relocate(region_group, .after = region)
+```
+
+```{r sanity-check}
+# look into the clean dataset
+glimpse(housing)
+# check for NA values in the columns
+colSums(is.na(housing))
+
+# two-way table preview
+tabyl(housing, type, region_group)          
+housing |> group_by(type) |>
+  summarize(across(c(price, landsize, building_area),
+                   list(mean = ~mean(.x, na.rm = TRUE),
+                        median = ~median(.x, na.rm = TRUE))))
+```

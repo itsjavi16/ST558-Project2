@@ -146,3 +146,58 @@ housing |>
 housing |> 
   tabyl(region_group, type, sale_year)
 ```
+
+## Numerical Summaries
+
+### Price at each level of property type
+
+
+```{r price-by-type}
+# center and spread of price by property type
+housing |>
+  group_by(type) |>
+  summarize(n = n(),
+            mean_price = mean(price, na.rm = TRUE),
+            median_price = median(price, na.rm = TRUE),
+            sd_price = sd(price, na.rm = TRUE),
+            min_price = min(price, na.rm = TRUE),
+            max_price = max(price, na.rm = TRUE)
+  )
+```
+
+### Price at each level of region group
+
+```{r price-by-region}
+# center and spread of price by region group
+housing |>
+  group_by(region_group) |>
+  summarize(n = n(),
+            mean_price = mean(price),
+            median_price = median(price),
+            sd_price = sd(price)) |>
+  arrange(median_price)
+```
+
+### Median price by region and property type
+
+
+```{r price-by-region-type}
+# median price by region/type combination, pivoted to wide formart
+housing |>
+  group_by(region_group, type) |>
+  summarize(median_price = median(price), .groups = "drop") |>
+  pivot_wider(names_from = type, values_from = median_price)
+```
+
+
+```{r}
+# land size is NaN for units because it was set to missing during cleaning
+# many variables have NAs so na.rm = TRUE is used to avoid errors in the summary
+housing |>
+  group_by(type) |>
+  summarize(across(c(rooms, distance, landsize, building_area, year_built),
+                   list(mean = ~ mean(.x, na.rm = TRUE),
+                        median = ~ median(.x, na.rm = TRUE),
+                        sd = ~ sd(.x, na.rm = TRUE)),
+                   .names = "{.col}_{.fn}"))
+```

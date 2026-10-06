@@ -190,7 +190,7 @@ housing |>
 ```
 
 
-```{r}
+```{r other-variables-by-type}
 # land size is NaN for units because it was set to missing during cleaning
 # many variables have NAs so na.rm = TRUE is used to avoid errors in the summary
 housing |>
@@ -201,3 +201,106 @@ housing |>
                         sd = ~ sd(.x, na.rm = TRUE)),
                    .names = "{.col}_{.fn}"))
 ```
+
+## Plots
+
+
+```{r plot-setup}
+theme_set(theme_minimal()) # sets all plots with the same minimal theme
+```
+
+### 1. Bar chart: sale method
+
+```{r plot-method-bar}
+housing |>
+  ggplot(aes(x = fct_infreq(method))) +
+  geom_bar(fill = "steelblue") + 
+  labs(title = "Number of Sales by Sale Method", 
+  x = "Sales Method", y = "Number of Sales") 
+```
+
+Most properties (64%) sold, while selling after auction is rare (under 1%).
+
+
+### 2. Side-by-side bar chart: property type by region group
+
+
+```{r plot-region-type-bar}
+# count of each property type within each region group
+housing |>
+  ggplot(aes(y = region_group, fill = type)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Property Type by Region", x = "Number of sales", y = "Region", fill = "Property Type")
+```
+
+Northern Metropolitan has the most house sales (5,309), but Southern Metropolitan has the most overall (8,524) since of its many townhouses. The share of units is highest in Southern Metropolitan (33%) and lowest in Regional Victoria (2%).
+
+### 3. Faceted histogram: price by property type
+
+```{r plot-price-histogram}
+housing |>
+  ggplot(aes(x = price, fill = type)) +
+  geom_histogram(bins = 50, show.legend = FALSE) +
+  facet_wrap(~ type, ncol = 1, scales = "free_y") +
+  coord_cartesian(xlim = c(0,4e6)) +
+  scale_x_continuous(labels = scales::dollar_format()) +
+  labs(title = "Distribution of Sale Price by Property Type", x = "Sale Price (AUD)", y = "Number of sales")
+```
+
+All three distributions are right-skewed. Units cluster at lower prices, while house prices are much more spread out.
+
+
+### 4. Boxplot: price by property type
+
+```{r plot-price-boxplot}
+# Log scale makes the skewed prices easier to compare across groups
+housing |>
+  ggplot(aes(x = price, y = region_group, fill = type)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  scale_x_log10(labels = scales::dollar_format())+
+  labs(title = "Sale Price by Region and Property Type",
+       x = "Sale price (AUD, log scale)", y = "Region", fill = "Property type")
+```
+
+In the metropolitan regions, houses have the highest median price and units the lowest, with the largest gap in Southern Metropolitan. Regional Victoria has very few townhouse (3) and unit (10) sales, so its boxes are not reliable comparisons.
+
+### 5. Scatter plot: price vs. distance from the CBD
+
+```{r plot-price-distance-scatter}
+# Transparency helps with ~27,000 overlapping points
+housing |>
+  ggplot(aes(x = distance, y = price, color = type)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_y_log10(labels = scales::dollar_format()) +
+  labs(title = "Sale Price vs. Distance from Melbourne CBD",
+       x = "Distance from CBD (km)", y = "Sale price (AUD, log scale)",
+       color = "Property type")
+```
+
+House prices fall noticeably with distance from the city (about 3% per km), townhouse prices fall slightly, and unit prices show almost no relationship with distance.
+
+### 6. Heatmap: median price by region and number of rooms
+
+```{r plot-price-heatmap}
+# Group 5+ rooms together since few properties have more than 5.
+# Each cell shows the median price and the number of sales behind it.
+housing |>
+  mutate(rooms_group = if_else(rooms >= 5, "5+", as.character(rooms)),
+         rooms_group = factor(rooms_group, levels = c("1", "2", "3", "4", "5+"))) |>
+  group_by(region_group, rooms_group) |>
+  summarize(median_price = median(price), n = n(), .groups = "drop") |>
+  ggplot(aes(x = rooms_group, y = region_group, fill = median_price)) +
+  geom_tile(color = "white") +
+    geom_text(aes(label = paste0(scales::label_dollar(scale = 1e-3, suffix = "K",
+                                                    accuracy = 1)(median_price),
+                               "\n(n = ", n, ")"),
+                color = if_else(median_price > 1.5e6, "black", "white")),
+            size = 2.8) +
+  scale_color_identity() +
+  scale_fill_viridis_c(labels = scales::dollar_format()) +
+  labs(title = "Median Sale Price by Region and Number of Rooms",
+       x = "Number of rooms", y = "Region", fill = "Median price")
+```
+
+In the metropolitan regions, median price rises steadily with the number of rooms, most steeply in Southern Metropolitan ($405K for 1 room to $2.4M for 5+). The high Regional Victoria value for 1 room is based on only 2 sales.

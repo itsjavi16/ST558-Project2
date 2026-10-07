@@ -3,6 +3,8 @@ library(bslib)
 library(tidyverse)
 library(DT)
 
+source("helpers.R")
+
 # cleaned data created in melbourne_housing_analysis.qmd
 housing <- read_rds("data/melbourne_housing_cleaned.rds")
 
@@ -10,10 +12,40 @@ ui <- page_sidebar(
   title = "Melbourne Housing Explorer",
 
   sidebar = sidebar(
+    width = 320,
     h4("Subset the data"),
-    p("Filters coming soon.")
-  ),
+    checkboxGroupInput(
+      "type",
+      "Property type",
+      choices = levels(housing$type),
+      selected = levels(housing$type)
+    ),
+    checkboxGroupInput(
+      "region",
+      "Region group",
+      choices = levels(housing$region_group),
+      selected = levels(housing$region_group)
+    ),
+    selectInput(
+      "num_var1",
+      "First numeric variable",
+      choices = c("None" = "none", num_vars),
+      selected = "price"
+    ),
+    uiOutput("num_slider1"),
 
+    selectInput(
+      "num_var2",
+      "Second numeric variable",
+      choices = c("None" = "none", num_vars),
+      selected = "distance"
+    ),
+    uiOutput("num_slider2"),
+
+    actionButton("subset_data", "Apply filters", class = "btn-primary"),
+    br(),
+    textOutput("n_rows")
+  ),
   navset_tab(
     nav_panel(
       "About",
@@ -78,6 +110,39 @@ ui <- page_sidebar(
   )
 )
 
-server <- function(input, output, session) {}
+server <- function(input, output, session) {
+  # dynamic sliders: rebuilt whenever a different numeric variable is chosen
+  output$num_slider1 <- renderUI(make_num_slider(
+    "num_range1",
+    input$num_var1,
+    housing
+  ))
+  output$num_slider2 <- renderUI(make_num_slider(
+    "num_range2",
+    input$num_var2,
+    housing
+  ))
+
+  # start with the full dataonly replaced when the button is pressed
+  subset_vals <- reactiveValues(data = housing)
+
+  observeEvent(input$subset_data, {
+    subset_vals$data <- housing |>
+      filter(type %in% input$type, region_group %in% input$region) |>
+      filter_num_range(input$num_var1, input$num_range1) |>
+      filter_num_range(input$num_var2, input$num_range2)
+  })
+
+  # row count to confirm the subsetting works
+  output$n_rows <- renderText({
+    paste(
+      "Showing",
+      format(nrow(subset_vals$data), big.mark = ","),
+      "of",
+      format(nrow(housing), big.mark = ","),
+      "sales"
+    )
+  })
+}
 
 shinyApp(ui, server)

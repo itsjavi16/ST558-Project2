@@ -2,6 +2,7 @@ library(shiny)
 library(bslib)
 library(tidyverse)
 library(DT)
+library(shinycssloaders)
 
 source("helpers.R")
 
@@ -118,7 +119,99 @@ ui <- page_sidebar(
       DT::dataTableOutput("data_table")
     ),
 
-    nav_panel("Data Exploration", p("Summaries and plots coming soon..."))
+    nav_panel(
+      "Data Exploration",
+      layout_sidebar(
+        sidebar = sidebar(
+          title = "Summary options",
+          width = 280,
+
+          radioButtons(
+            "summary_type",
+            "Summarize",
+            choices = c(
+              "Categorical variables" = "cat",
+              "Numeric variables" = "num"
+            )
+          ),
+
+          # controls for categorical summaries
+          conditionalPanel(
+            "input.summary_type == 'cat'",
+            selectInput(
+              "cat_var1",
+              "Variable",
+              choices = cat_vars,
+              selected = "type"
+            ),
+            selectInput(
+              "cat_var2",
+              "Second variable (two-way table / bar fill)",
+              choices = c("None" = "none", cat_vars),
+              selected = "region_group"
+            ),
+            selectInput(
+              "cat_facet",
+              "Facet by",
+              choices = c("None" = "none", cat_vars)
+            ),
+            radioButtons(
+              "bar_position",
+              "Bar style",
+              choices = c(
+                "Side-by-side" = "dodge",
+                "Stacked" = "stack",
+                "Proportions" = "fill"
+              )
+            )
+          ),
+
+          # controls for numeric summaries
+          conditionalPanel(
+            "input.summary_type == 'num'",
+            selectInput(
+              "num_var",
+              "Numeric variable",
+              choices = num_vars,
+              selected = "price"
+            ),
+            selectInput(
+              "num_group",
+              "Summarize across / color by",
+              choices = c("None" = "none", cat_vars),
+              selected = "type"
+            ),
+            radioButtons(
+              "num_plot",
+              "Plot type",
+              choices = c(
+                "Histogram" = "hist",
+                "Box plot" = "box",
+                "Scatter plot" = "scatter"
+              )
+            ),
+            conditionalPanel(
+              "input.num_plot == 'scatter'",
+              selectInput(
+                "scatter_x",
+                "X-axis variable",
+                choices = num_vars,
+                selected = "distance"
+              )
+            ),
+            selectInput(
+              "num_facet",
+              "Facet by",
+              choices = c("None" = "none", cat_vars)
+            )
+          )
+        ),
+
+        withSpinner(plotOutput("explore_plot", height = "450px")),
+        h4("Summary table"),
+        tableOutput("explore_table")
+      )
+    )
   )
 )
 
@@ -163,6 +256,72 @@ server <- function(input, output, session) {
     content = function(file) {
       write_csv(subset_vals$data, file)
     }
+  )
+
+  # data for the exploration tab, with checks that give friendly messages
+  explore_data <- reactive({
+    data <- subset_vals$data
+    validate(need(
+      nrow(data) > 0,
+      "No sales match the current filters. Change the sidebar selections and press 'Apply filters'."
+    ))
+
+    if (input$summary_type == "cat") {
+      validate(need(
+        input$cat_var1 != input$cat_var2,
+        "Please choose two different categorical variables."
+      ))
+    } else {
+      validate(need(
+        any(!is.na(data[[input$num_var]])),
+        paste(
+          "There are no",
+          var_label(input$num_var),
+          "values for the selected sales (for example, land size is missing for all units)."
+        )
+      ))
+      if (input$num_plot == "scatter") {
+        validate(need(
+          input$scatter_x != input$num_var,
+          "Please choose two different numeric variables for the scatter plot."
+        ))
+      }
+    }
+    data
+  })
+
+  output$explore_plot <- renderPlot({
+    data <- explore_data()
+    if (input$summary_type == "cat") {
+      make_cat_plot(
+        data,
+        input$cat_var1,
+        input$cat_var2,
+        input$cat_facet,
+        input$bar_position
+      )
+    } else {
+      make_num_plot(
+        data,
+        input$num_plot,
+        input$num_var,
+        input$scatter_x,
+        input$num_group,
+        input$num_facet
+      )
+    }
+  })
+
+  output$explore_table <- renderTable(
+    {
+      data <- explore_data()
+      if (input$summary_type == "cat") {
+        make_cat_table(data, input$cat_var1, input$cat_var2)
+      } else {
+        make_num_summary(data, input$num_var, input$num_group)
+      }
+    },
+    digits = 1
   )
 
   # row count to confirm the subsetting works

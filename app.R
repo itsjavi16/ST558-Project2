@@ -105,7 +105,19 @@ ui <- page_sidebar(
       ))
     ),
 
-    nav_panel("Data Download", p("Data table coming soon...")),
+    nav_panel(
+      "Data Download",
+      h3("View and download the data."),
+      p(
+        "The table shows the sales that match the sidebar filters.",
+        "You press 'Apply filters' in the sidebar to update it"
+      ),
+      downloadButton("download_data", "Download CSV"),
+      br(),
+      br(),
+      DT::dataTableOutput("data_table")
+    ),
+
     nav_panel("Data Exploration", p("Summaries and plots coming soon..."))
   )
 )
@@ -132,6 +144,26 @@ server <- function(input, output, session) {
       filter_num_range(input$num_var1, input$num_range1) |>
       filter_num_range(input$num_var2, input$num_range2)
   })
+
+  # Data table of the (possibly subsetted) data
+  output$data_table <- DT::renderDataTable({
+    DT::datatable(
+      subset_vals$data,
+      options = list(pageLength = 10, scrollX = TRUE),
+      rownames = FALSE
+    ) |>
+      DT::formatCurrency("price", digits = 0)
+  })
+
+  # Save the (possibly subsetted) data as a CSV file
+  output$download_data <- downloadHandler(
+    filename = function() {
+      paste0("melbourne_housing_subset_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      write_csv(subset_vals$data, file)
+    }
+  )
 
   # row count to confirm the subsetting works
   output$n_rows <- renderText({

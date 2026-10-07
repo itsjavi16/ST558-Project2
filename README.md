@@ -2,6 +2,8 @@
 
 Interactive Shiny app for analysis of residential property sales in Melbourne, Australia from January 2016 to March 2018.
 
+**Live app:** [link to shinyapps.io app](https://itsjavi16.shinyapps.io/melbourne-housing-explorer/)
+
 ## Purpose
 
 The app let users filter around 27,000 property sales by property type, region, and numeric ranges (such as price or distance from the CBB), then view, download, and summarize the results. It is intended to assist in comparing sale prices and features of properties between property types and regions.

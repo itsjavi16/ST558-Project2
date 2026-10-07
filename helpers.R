@@ -1,5 +1,6 @@
 library(shiny)
 library(tidyverse)
+
 # helpers functions for the Melbourne Housing Market Analysis app
 
 # numeric variables the user can filter on
@@ -30,7 +31,7 @@ make_num_slider <- function(id, var, data) {
   )
 }
 
-# keep rows above of ar fall within the range or skip if no variable is chosen
+# keep rows where var falls within the range; skip if no variable is chosen
 filter_num_range <- function(data, var, range) {
   if (var == "none" || is.null(range)) {
     return(data)
@@ -95,7 +96,7 @@ make_cat_plot <- function(data, var1, var2, facet, position) {
       x = var_label(var1),
       y = if (position == "fill") "Proportion of sales" else "Number of sales"
     ) +
-    theme_minimal() +
+    theme_minimal(base_size = 14) +
     theme(axis.text.x = element_text(angle = 30, hjust = 1))
 }
 
@@ -115,6 +116,11 @@ make_num_summary <- function(data, num, group) {
       max = max(.data[[num]]),
       .groups = "drop"
     )
+}
+
+# comma axis labels (1,000,000) for large numbers
+num_axis_labels <- function(var) {
+  if (var == "year_built") waiver() else scales::label_comma()
 }
 
 # histogram, box plot or scatter plot of a numeric variable
@@ -139,7 +145,8 @@ make_num_plot <- function(data, plot_type, num, scatter_x, group, facet) {
         title = paste("Distribution of", var_label(num)),
         x = var_label(num),
         y = "Number of sales"
-      )
+      ) +
+      scale_x_continuous(labels = num_axis_labels(num))
   } else if (plot_type == "box") {
     p <- if (group == "none") {
       ggplot(data, aes(x = "All sales", y = .data[[num]])) +
@@ -160,7 +167,8 @@ make_num_plot <- function(data, plot_type, num, scatter_x, group, facet) {
         ),
         x = if (group == "none") NULL else var_label(group),
         y = var_label(num)
-      )
+      ) +
+      scale_y_continuous(labels = num_axis_labels(num))
   } else {
     data <- data |> filter(!is.na(.data[[scatter_x]]))
     p <- ggplot(data, aes(x = .data[[scatter_x]], y = .data[[num]]))
@@ -174,7 +182,9 @@ make_num_plot <- function(data, plot_type, num, scatter_x, group, facet) {
         title = paste(var_label(num), "vs.", var_label(scatter_x)),
         x = var_label(scatter_x),
         y = var_label(num)
-      )
+      ) +
+      scale_x_continuous(labels = num_axis_labels(scatter_x)) +
+      scale_y_continuous(labels = num_axis_labels(num))
   }
 
   if (group != "none") {
@@ -184,5 +194,19 @@ make_num_plot <- function(data, plot_type, num, scatter_x, group, facet) {
     p <- p + facet_wrap(vars(.data[[facet]]))
   }
 
-  p + theme_minimal()
+  p + theme_minimal(base_size = 14)
+}
+
+# plot text and grid colors for the app's light or dark mode
+
+mode_theme <- function(mode) {
+  if (identical(mode, "dark")) {
+    theme(
+      text = element_text(color = "#E9ECEF"),
+      axis.text = element_text(color = "#ADB5BD"),
+      panel.grid = element_line(color = "#495057")
+    )
+  } else {
+    theme()
+  }
 }

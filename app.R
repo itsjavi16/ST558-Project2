@@ -10,7 +10,11 @@ source("helpers.R")
 housing <- read_rds("data/melbourne_housing_cleaned.rds")
 
 ui <- page_sidebar(
-  title = "Melbourne Housing Explorer",
+  title = div(
+    class = "d-flex justify-content-between align-items-center w-100 px-4 py-2",
+    "Melbourne Housing Explorer",
+    input_dark_mode(id = "dark_mode", mode = "light")
+  ),
 
   sidebar = sidebar(
     width = 320,
@@ -79,7 +83,9 @@ ui <- page_sidebar(
           strong("Sidebar:"),
           "choose property types, regions and",
           "numeric ranges, then press the button to subset the data.",
-          "The rest of the app updates only when the button is pressed."
+          "The rest of the app updates only when the button is pressed.",
+          "Sales with a missing value for a chosen numeric variable are",
+          "excluded by that filter; choose 'None' to skip it."
         ),
         tags$li(
           strong("Data Download:"),
@@ -111,7 +117,7 @@ ui <- page_sidebar(
       h3("View and download the data."),
       p(
         "The table shows the sales that match the sidebar filters.",
-        "You press 'Apply filters' in the sidebar to update it"
+        "Press 'Apply filters' in the sidebar to update it."
       ),
       downloadButton("download_data", "Download CSV"),
       br(),
@@ -209,7 +215,7 @@ ui <- page_sidebar(
 
         withSpinner(plotOutput("explore_plot", height = "450px")),
         h4("Summary table"),
-        tableOutput("explore_table")
+        div(style = "overflow-x: auto;", tableOutput("explore_table"))
       )
     )
   )
@@ -228,7 +234,7 @@ server <- function(input, output, session) {
     housing
   ))
 
-  # start with the full dataonly replaced when the button is pressed
+  # start with the full data; only replaced when the button is pressed
   subset_vals <- reactiveValues(data = housing)
 
   observeEvent(input$subset_data, {
@@ -321,7 +327,8 @@ server <- function(input, output, session) {
         make_num_summary(data, input$num_var, input$num_group)
       }
     },
-    digits = 1
+    digits = 1,
+    format.args = list(big.mark = ",")
   )
 
   # row count to confirm the subsetting works

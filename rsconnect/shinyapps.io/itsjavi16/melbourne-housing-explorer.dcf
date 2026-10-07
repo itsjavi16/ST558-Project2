@@ -1,0 +1,10 @@
+name: melbourne-housing-explorer
+title:
+username: itsjavi16
+account: itsjavi16
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 18118910
+bundleId: 12660329
+url: https://itsjavi16.shinyapps.io/melbourne-housing-explorer/
+version: 1

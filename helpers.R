@@ -27,7 +27,10 @@ make_num_slider <- function(id, var, data) {
     label = paste("Range of", names(num_vars)[num_vars == var]),
     min = floor(rng[1]),
     max = ceiling(rng[2]),
-    value = c(floor(rng[1]), ceiling(rng[2]))
+    value = c(floor(rng[1]), ceiling(rng[2])),
+    # show prices as $85,000 and years without a comma (1950, not 1,950)
+    pre = if (var == "price") "$" else NULL,
+    sep = if (var == "year_built") "" else ","
   )
 }
 

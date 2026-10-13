@@ -196,17 +196,3 @@ make_num_plot <- function(data, plot_type, num, scatter_x, group, facet) {
 
   p + theme_minimal(base_size = 14)
 }
-
-# plot text and grid colors for the app's light or dark mode
-
-mode_theme <- function(mode) {
-  if (identical(mode, "dark")) {
-    theme(
-      text = element_text(color = "#E9ECEF"),
-      axis.text = element_text(color = "#ADB5BD"),
-      panel.grid = element_line(color = "#495057")
-    )
-  } else {
-    theme()
-  }
-}

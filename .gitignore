@@ -5,3 +5,5 @@
 .Renviron
 /.quarto/
 **/*.quarto_ipynb
+melbourne_housing_analysis.html
+melbourne_housing_analysis_files/

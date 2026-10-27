@@ -1,23 +1,43 @@
-```{r libraries}
+---
+title: "Melbourne Housing: Exploratory Data Analysis"
+author: "Javi Brito"
+format: html
+---
+
+This document explores residential property sales in Melbourne, Australia, from
+January 2016 to March 2018, using the
+[Melbourne Housing Market dataset on Kaggle](https://www.kaggle.com/datasets/anthonypino/melbourne-housing-market).
+It cleans the data, then summarizes it with contingency tables, numerical
+summaries and plots. These summaries are the basis for the Shiny app in this
+repository.
+
+```{r libraries, include = FALSE}
 library(tidyverse)
-library(dplyr)
-library(readr)
 library(janitor)
 ```
 
-```{r loading-data}
-housing_raw <- read_csv("data/Melbourne_housing_FULL.csv")
-problems(read_csv("data/Melbourne_housing_FULL.csv"))
-```
+## Data Cleaning
+
+The raw data contains 34,857 property sales. Sales with no recorded price
+(about 22%) were removed because price is the main variable of interest, along
+with one duplicate row and three rows missing location information, leaving
+27,244 sales. Single-letter codes for property type and sale method were
+converted to descriptive labels, and the three small regional Victoria areas
+were combined into one group. Impossible values were set to missing: land sizes
+and building areas of 0, building areas over 5,000 m², and build years before
+1800 or after 2018. Land size was also set to missing for units, because for
+apartments it records the land under the entire complex rather than the
+individual unit. Missing values in other variables (for example, about 61% of
+building areas) were kept as `NA` rather than dropping those rows, so summaries
+use `na.rm = TRUE`.
 
 ```{r cleaning-data}
 housing<- read_csv("data/Melbourne_housing_FULL.csv",
                         na = c("", "NA", "#N/A")) |>
   clean_names() |>
   distinct() |>
-  # response variable must be present so we can drop 3 rows with no region
-  # without about 22% are dropped.
-  # rows with missing region/council info were removed
+  # drop sales with no price (~22%; price is the response variable)
+  # and the 3 rows with no region/council information
   filter(!is.na(price), !is.na(regionname)) |>
   # fix misspelled source column names and use clearer names
   rename(latitude = lattitude, longitude = longtitude,
@@ -101,7 +121,7 @@ housing |> tabyl(method) |> adorn_pct_formatting()
 Houses make up about two-thirds of the sales (18,470 of 27,244), and most
 properties sold outright ("Sold", 64%).
 
-## Two-way tables
+### Two-way tables
 
 ```{r two-way-tidy}
 # tidyverse: region group by property type, pivoted to wide format
@@ -182,7 +202,7 @@ housing |>
 
 
 ```{r price-by-region-type}
-# median price by region/type combination, pivoted to wide formart
+# median price by region/type combination, pivoted to wide format
 housing |>
   group_by(region_group, type) |>
   summarize(median_price = median(price), .groups = "drop") |>
@@ -202,6 +222,15 @@ housing |>
                    .names = "{.col}_{.fn}"))
 ```
 
+In every group the mean price is well above the median, so prices are
+right-skewed and the median is the better summary of a typical sale. Houses
+have the highest median price ($1,015,000), followed by townhouses ($850,000)
+and units ($580,000). Southern Metropolitan has the highest median price
+($1,250,000) and the most variability (sd ≈ $857,000), while Regional Victoria
+has the lowest ($569,000). Within Southern Metropolitan, the median house sells
+for about 2.6 times the median unit ($1.66M vs. $630K). Units also tend to be
+closer to the city (median 7.3 km from the CBD vs. 11.2 km for houses).
+
 ## Plots
 
 
@@ -216,10 +245,10 @@ housing |>
   ggplot(aes(x = fct_infreq(method))) +
   geom_bar(fill = "steelblue") + 
   labs(title = "Number of Sales by Sale Method", 
-  x = "Sales Method", y = "Number of Sales") 
+  x = "Sale method", y = "Number of sales") 
 ```
 
-Most properties (64%) sold, while selling after auction is rare (under 1%).
+Most sales (64%) used the standard "Sold" method, while "Sold after auction" is rare (under 1%).
 
 
 ### 2. Side-by-side bar chart: property type by region group
@@ -233,7 +262,7 @@ housing |>
   labs(title = "Property Type by Region", x = "Number of sales", y = "Region", fill = "Property Type")
 ```
 
-Northern Metropolitan has the most house sales (5,309), but Southern Metropolitan has the most overall (8,524) since of its many townhouses. The share of units is highest in Southern Metropolitan (33%) and lowest in Regional Victoria (2%).
+Northern Metropolitan has the most house sales (5,309), but Southern Metropolitan has the most overall (8,524) because of its many units and townhouses. The share of units is highest in Southern Metropolitan (33%) and lowest in Regional Victoria (2%).
 
 ### 3. Faceted histogram: price by property type
 
@@ -250,7 +279,7 @@ housing |>
 All three distributions are right-skewed. Units cluster at lower prices, while house prices are much more spread out.
 
 
-### 4. Boxplot: price by property type
+### 4. Box plot: price by region and property type
 
 ```{r plot-price-boxplot}
 # Log scale makes the skewed prices easier to compare across groups
@@ -305,7 +334,7 @@ housing |>
 
 In the metropolitan regions, median price rises steadily with the number of rooms, most steeply in Southern Metropolitan ($405K for 1 room to $2.4M for 5+). The high Regional Victoria value for 1 room is based on only 2 sales.
 
- ```{r save-cleaned-data-rds}
- # save the clean data for the Shiny app
- write_rds(housing, "data/melbourne_housing_cleaned.rds")
- ```
+```{r save-cleaned-data-rds}
+# save the clean data for the Shiny app
+write_rds(housing, "data/melbourne_housing_cleaned.rds")
+```
